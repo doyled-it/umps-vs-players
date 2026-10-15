@@ -1,0 +1,542 @@
+<title>Who Knows the Zone Better?</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+/* Layout: a scouting report. One reading column; zone maps sit in pairs on wide screens,
+   always drawn from the catcher's view with strike = red and ball = blue everywhere. */
+:root {
+  --bg: #eff1ec;
+  --surface: #fafbf8;
+  --ink: #14181b;
+  --ink-2: #4a5056;
+  --muted: #767c81;
+  --rule: #d6dad2;
+  --strike: #cc3a33;
+  --ball: #2565c2;
+  --grass: #1d6a4a;
+  --display: "Big Shoulders Display", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1211; --surface: #161b19; --ink: #eceee9; --ink-2: #b7bdb7; --muted: #868c88;
+    --rule: #2b312e; --strike: #ec625b; --ball: #5592ea; --grass: #5dbf92; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1211; --surface: #161b19; --ink: #eceee9; --ink-2: #b7bdb7; --muted: #868c88;
+  --rule: #2b312e; --strike: #ec625b; --ball: #5592ea; --grass: #5dbf92; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--body); font-size: 17px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 64px;
+}
+main { max-width: 1080px; margin: 0 auto; display: grid; gap: 56px; }
+.col { max-width: 700px; }
+h1, h2 { font-family: var(--display); font-weight: 800; letter-spacing: 0.01em; text-wrap: balance; margin: 0; line-height: 1.02; }
+h1 { font-size: clamp(44px, 8vw, 84px); text-transform: uppercase; }
+h2 { font-size: clamp(30px, 4.6vw, 42px); text-transform: uppercase; }
+h3 { font-family: var(--body); font-weight: 600; font-size: 17px; margin: 0; }
+p { margin: 0; }
+.eyebrow { font-family: var(--data); font-size: 12.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.dek { font-size: 21px; line-height: 1.45; color: var(--ink-2); max-width: 640px; }
+.stack { display: grid; gap: 14px; }
+.prose { color: var(--ink-2); }
+div.prose { display: grid; gap: 12px; }
+.prose strong { color: var(--ink); font-weight: 600; }
+.num { font-family: var(--data); font-variant-numeric: tabular-nums; }
+
+/* Box-score strip */
+.strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 2px solid var(--ink); border-bottom: 1px solid var(--rule); }
+.strip > div { padding: 16px 18px 18px 0; display: grid; gap: 6px; align-content: start; }
+.strip > div + div { padding-left: 18px; border-left: 1px solid var(--rule); }
+.strip .fig { font-family: var(--display); font-weight: 800; font-size: clamp(40px, 6vw, 58px); line-height: 1; }
+.strip .fig.red { color: var(--strike); }
+.strip .lab { font-size: 15px; color: var(--ink-2); line-height: 1.35; }
+@media (max-width: 640px) {
+  .strip { grid-template-columns: 1fr; }
+  .strip > div + div { padding-left: 0; border-left: 0; border-top: 1px solid var(--rule); }
+}
+
+section { display: grid; gap: 20px; }
+.head { display: grid; gap: 10px; }
+figure { margin: 0; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 18px; display: grid; gap: 12px; min-width: 0; }
+figcaption { font-size: 14.5px; color: var(--ink-2); line-height: 1.45; }
+.pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+@media (max-width: 760px) { .pair { grid-template-columns: 1fr; } }
+.split { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 860px) { .split { grid-template-columns: 1fr; } }
+
+svg { display: block; width: 100%; height: auto; overflow: visible; }
+svg text { font-family: var(--data); fill: var(--muted); }
+.zone-rect { fill: none; stroke: var(--ink); stroke-width: 0.14; }
+.abs-edge { fill: none; stroke: var(--ink); stroke-width: 0.12; stroke-dasharray: 0.55 0.4; opacity: 0.75; }
+.axis { stroke: var(--rule); stroke-width: 0.1; }
+.dot-s { fill: var(--strike); }
+.dot-b { fill: var(--ball); }
+.dot-fade { fill: var(--muted); opacity: 0.18; }
+.dot-let { fill: none; stroke: var(--muted); stroke-width: 0.09; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; color: var(--ink-2); align-items: center; }
+.key { display: inline-flex; align-items: center; gap: 7px; }
+.sw { width: 11px; height: 11px; border-radius: 50%; display: inline-block; flex: none; }
+.sw.s { background: var(--strike); } .sw.b { background: var(--ball); }
+.sw.ring { border: 1.5px solid var(--muted); }
+.sw.line { width: 22px; height: 0; border-radius: 0; border-top: 2px dashed var(--ink); opacity: 0.75; }
+.ramp { display: grid; gap: 4px; font-family: var(--data); font-size: 12px; color: var(--muted); }
+.ramp .bar { height: 10px; border-radius: 2px; border: 1px solid var(--rule); background: linear-gradient(90deg, var(--surface), var(--strike)); }
+@supports (background: linear-gradient(in oklab, red, blue)) {
+  .ramp .bar { background: linear-gradient(90deg in oklab, var(--surface), var(--strike)); }
+}
+.ramp .ticks { display: flex; justify-content: space-between; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+label.sel { font-size: 14px; color: var(--ink-2); display: inline-flex; gap: 8px; align-items: center; }
+select { font: 15px var(--body); color: var(--ink); background: var(--surface); border: 1px solid var(--rule); border-radius: 4px; padding: 6px 8px; max-width: 100%; }
+select:focus-visible { outline: 2px solid var(--grass); outline-offset: 2px; }
+.readout { font-family: var(--data); font-size: 13.5px; color: var(--ink); }
+
+.tip { position: fixed; z-index: 10; pointer-events: none; background: var(--ink); color: var(--bg); font: 13px/1.4 var(--data); padding: 7px 9px; border-radius: 4px; max-width: 260px; box-shadow: 0 4px 14px rgb(0 0 0 / 0.18); }
+
+.mini { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+.mini th, .mini td { text-align: right; padding: 6px 0 6px 12px; border-bottom: 1px solid var(--rule); font-variant-numeric: tabular-nums; }
+.mini th:first-child, .mini td:first-child { text-align: left; padding-left: 0; }
+.mini th { font-weight: 600; color: var(--muted); font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.06em; }
+.mini td { font-family: var(--data); font-size: 13.5px; }
+.mini td:first-child { font-family: var(--body); font-size: 14.5px; }
+
+.callout { border-left: 3px solid var(--grass); padding: 4px 0 4px 16px; color: var(--ink); font-size: 18px; line-height: 1.45; }
+.notes { font-size: 14.5px; color: var(--ink-2); display: grid; gap: 8px; }
+.notes p { max-width: 700px; }
+.rows text.lab { fill: var(--ink); font-family: var(--body); font-size: 13px; }
+.rows text.grp { fill: var(--muted); font-size: 11px; letter-spacing: 0.08em; }
+.u-dot { fill: var(--ink); } .u-ci { stroke: var(--ink); }
+.c-dot { fill: var(--grass); } .c-ci { stroke: var(--grass); }
+.sw.u { background: var(--ink); } .sw.c { background: var(--grass); }
+@media (prefers-reduced-motion: no-preference) { .dots circle { transition: opacity 0.15s; } }
+</style>
+
+<main>
+  <header class="stack col" style="max-width: 820px;">
+    <div class="eyebrow">2026 MLB regular season · ABS challenges</div>
+    <h1>Who knows the zone better?</h1>
+    <p class="dek">Catchers win most of their ABS challenges against umpires. Here is every pitch location behind that number, and what it says about whose eyes are sharper.</p>
+  </header>
+
+  <div class="strip" id="strip"></div>
+
+  <section>
+    <div class="head col">
+      <div class="eyebrow">The head-to-head</div>
+      <h2>Every catcher challenge</h2>
+      <p class="prose">Each dot is one time a catcher tapped his helmet, drawn where the pitch actually crossed the middle of the plate. Red means ABS called it a strike and the catcher was right. Blue means it was a ball and the umpire was right.</p>
+    </div>
+    <div class="split">
+      <figure>
+        <div class="controls">
+          <label class="sel" for="catcherPick">Catcher <select id="catcherPick"><option value="-1">All catchers</option></select></label>
+          <span class="readout" id="pickReadout"></span>
+        </div>
+        <svg id="chalMap" role="img" aria-label="Zone map of every catcher challenge, colored by ABS ruling"></svg>
+        <div class="legend">
+          <span class="key"><span class="sw s"></span>ABS strike, catcher right</span>
+          <span class="key"><span class="sw b"></span>ABS ball, umpire right</span>
+          <span class="key"><span class="sw line"></span>ABS edge for the ball's center</span>
+        </div>
+      </figure>
+      <div class="prose" id="chalText"></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="head col">
+      <div class="eyebrow">Same zone, two judges</div>
+      <h2>Where each judge says strike</h2>
+      <p class="prose">Left: how often the umpire called a strike, at each square inch of the zone. Right: how often the catcher challenged when the umpire called that spot a ball. A challenge is the catcher saying "strike." Squares with fewer than 25 pitches are left blank.</p>
+    </div>
+    <div class="pair">
+      <figure>
+        <h3>Umpire: share called a strike</h3>
+        <svg id="umpMap" role="img" aria-label="Heat map of how often umpires called a strike by location"></svg>
+      </figure>
+      <figure>
+        <h3>Catcher: share of ball calls challenged</h3>
+        <svg id="catMap" role="img" aria-label="Heat map of how often catchers challenged a ball call by location"></svg>
+      </figure>
+    </div>
+    <div class="split">
+      <div class="ramp" aria-hidden="true"><div class="bar"></div><div class="ticks"><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div></div>
+      <p class="prose" id="mapText"></p>
+    </div>
+  </section>
+
+  <section>
+    <div class="head col">
+      <div class="eyebrow">The ones that got away</div>
+      <h2>Missed strikes catchers let go</h2>
+      <p class="prose">These are pitches ABS says were strikes but the umpire called balls, at times when the defense still had a challenge. A winning challenge costs nothing, because teams keep the challenges they win. Filled dots were challenged. Rings were let go.</p>
+    </div>
+    <div class="split">
+      <figure>
+        <svg id="missMap" role="img" aria-label="Zone map of umpire missed strikes, filled if the defense challenged"></svg>
+        <div class="legend">
+          <span class="key"><span class="sw s"></span>Challenged</span>
+          <span class="key"><span class="sw ring"></span>Let go</span>
+          <span class="key"><span class="sw line"></span>ABS edge</span>
+        </div>
+      </figure>
+      <div class="stack">
+        <table class="mini" id="missTable">
+          <thead><tr><th>Umpire missed by</th><th>Missed strikes</th><th>Challenged</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <p class="prose" id="missText"></p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="head col">
+      <div class="eyebrow">Reading the scoreboard</div>
+      <h2>What a 58.6% win rate proves</h2>
+      <p class="prose" id="benchIntro"></p>
+    </div>
+    <figure>
+      <svg id="bench" role="img" aria-label="Expected head-to-head win rate by how blurry the challenger's read is"></svg>
+      <div class="legend">
+        <span class="key"><span class="sw" style="background: var(--ink); border-radius: 1px; height: 3px; width: 22px;"></span>Challenger's misreads independent of the umpire's</span>
+        <span class="key"><span class="sw" style="background: var(--grass); border-radius: 1px; height: 3px; width: 22px;"></span>Challenger shares many of the umpire's blind spots (correlation 0.4)</span>
+      </div>
+      <figcaption>Each line shows the win rate a challenger would get on the same ball calls if they made the same 5,607 challenges. Move along a line to see how the win rate changes with sharper or blurrier eyes.</figcaption>
+    </figure>
+    <p class="callout col" id="benchCallout"></p>
+  </section>
+
+  <section>
+    <div class="head col">
+      <div class="eyebrow">Looking for an edge</div>
+      <h2>Any pitch where catchers see better?</h2>
+      <p class="prose">Blur is how far off a person's read of the pitch's location typically is, in inches. Lower is sharper. Bars are 95% intervals from resampling games.</p>
+    </div>
+    <figure>
+      <svg id="rows" class="rows" role="img" aria-label="Umpire and catcher blur by pitch type and part of the zone"></svg>
+      <div class="legend">
+        <span class="key"><span class="sw u"></span>Umpire</span>
+        <span class="key"><span class="sw c"></span>Catcher</span>
+      </div>
+    </figure>
+  </section>
+
+  <section class="notes">
+    <div class="eyebrow">How this was measured</div>
+    <p>Pitch locations and each batter's ABS zone come from Statcast, whose 2026 locations are measured at the middle of the plate, where ABS judges a pitch. Challenges and rulings come from MLB's game feeds. A pitch is a strike if any part of the ball touches the 17-inch-wide zone. Rebuilt this way, the zone matches <span id="agree"></span> of the actual ABS rulings, so every called pitch can be graded, not only the challenged ones.</p>
+    <p>Maps put every batter on one average zone (bottom 19.5 in, top 38.6 in off the ground) while keeping each pitch's exact distance to the nearer edge, which is what ABS uses. Blur comes from fitting each judge's yes-rate against the true distance from the edge. For catchers this uses only ball calls with a challenge left, and allows for catchers passing on some obvious misses.</p>
+  </section>
+</main>
+<div class="tip" id="tip" hidden></div>
+
+<script>
+const DATA = /*__DATA__*/null;
+const NS = "http://www.w3.org/2000/svg";
+const pct = (v, d = 1) => (v * 100).toFixed(d) + "%";
+const fmt = n => n.toLocaleString("en-US");
+const $ = id => document.getElementById(id);
+function el(tag, attrs = {}, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+
+/* ---------- tooltip ---------- */
+const tip = $("tip");
+function showTip(html, x, y) {
+  tip.innerHTML = html; tip.hidden = false;
+  const r = tip.getBoundingClientRect();
+  let left = x + 14, top = y + 14;
+  if (left + r.width > window.innerWidth - 8) left = x - r.width - 14;
+  if (top + r.height > window.innerHeight - 8) top = y - r.height - 14;
+  tip.style.left = Math.max(8, left) + "px"; tip.style.top = Math.max(8, top) + "px";
+}
+const hideTip = () => { tip.hidden = true; };
+
+/* ---------- zone frame (units are inches) ---------- */
+const Z = DATA.zone, [X0, X1] = DATA.x_range, [ZB0, ZB1] = DATA.z_range;
+const PAD_L = 5.2, PAD_B = 4.2, PAD_T = 0.8, PAD_R = 0.8;
+const yOf = z => ZB1 - z;  // flip so higher pitches draw higher
+function zoneFrame(svg) {
+  svg.setAttribute("viewBox", `${X0 - PAD_L} ${-PAD_T} ${X1 - X0 + PAD_L + PAD_R} ${ZB1 - ZB0 + PAD_T + PAD_B}`);
+  const g = el("g", {}, svg);
+  el("rect", { x: X0, y: 0, width: X1 - X0, height: ZB1 - ZB0, fill: "var(--surface)", stroke: "var(--rule)", "stroke-width": 0.1 }, g);
+  for (const x of [-15, -10, -5, 0, 5, 10, 15]) {
+    const t = el("text", { x, y: ZB1 - ZB0 + 1.9, "text-anchor": "middle", "font-size": 1.35 }, g);
+    t.textContent = x === 0 ? "0" : (x > 0 ? "+" : "−") + Math.abs(x);
+  }
+  const xl = el("text", { x: (X0 + X1) / 2, y: ZB1 - ZB0 + 3.7, "text-anchor": "middle", "font-size": 1.3 }, g);
+  xl.textContent = "inches from middle of plate (catcher's view)";
+  for (let z = 10; z <= 50; z += 10) {
+    if (z < ZB0 || z > ZB1) continue;
+    const t = el("text", { x: X0 - 0.8, y: yOf(z) + 0.45, "text-anchor": "end", "font-size": 1.35 }, g);
+    t.textContent = z + '"';
+  }
+  const yl = el("text", { x: X0 - 4.3, y: yOf((ZB0 + ZB1) / 2), "text-anchor": "middle", "font-size": 1.3, transform: `rotate(-90 ${X0 - 4.3} ${yOf((ZB0 + ZB1) / 2)})` }, g);
+  yl.textContent = "height off the ground, average batter";
+  return g;
+}
+function zoneOverlay(svg) {
+  const g = el("g", { "pointer-events": "none" }, svg);
+  const hw = Z.half_width, r = Z.radius;
+  el("rect", { class: "zone-rect", x: -hw, y: yOf(Z.top), width: 2 * hw, height: Z.top - Z.bot }, g);
+  el("rect", { class: "abs-edge", x: -hw - r, y: yOf(Z.top + r), width: 2 * (hw + r), height: Z.top - Z.bot + 2 * r, rx: r, ry: r }, g);
+}
+function svgPoint(svg, evt) {
+  const p = svg.createSVGPoint(); p.x = evt.clientX; p.y = evt.clientY;
+  return p.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+/* ---------- strip ---------- */
+const T = DATA.totals, B = DATA.benchmark;
+$("strip").innerHTML = `
+  <div><div class="fig red">${pct(T.catcher_won / T.catcher_challenges)}</div><div class="lab">of <span class="num">${fmt(T.catcher_challenges)}</span> catcher challenges won against the umpire</div></div>
+  <div><div class="fig">${pct(B.equal_eyes_independent, 0)}</div><div class="lab">what a challenger with the umpire's own eyes would win on those pitches (${pct(B.equal_eyes_shared, 0)} if it shared the umpire's blind spots)</div></div>
+  <div><div class="fig">${pct(T.ump_accuracy)}</div><div class="lab">of the season's called pitches the umpire got right</div></div>`;
+$("agree").textContent = pct(T.abs_agreement, 2);
+
+/* ---------- challenge map ---------- */
+const CH = DATA.challenges;  // [x, z, won, nameIdx, count, inning, margin, edge]
+const chalSvg = $("chalMap");
+zoneFrame(chalSvg);
+const chalDots = el("g", { class: "dots" }, chalSvg);
+zoneOverlay(chalSvg);
+const chalEls = CH.map(c => el("circle", { cx: c[0], cy: yOf(c[1]), r: 0.34, class: c[2] ? "dot-s" : "dot-b", opacity: 0.7 }, chalDots));
+function bucketIndex(points, xi, zi) {
+  const idx = new Map();
+  points.forEach((p, i) => {
+    const k = Math.floor(p[xi]) + "," + Math.floor(p[zi]);
+    if (!idx.has(k)) idx.set(k, []);
+    idx.get(k).push(i);
+  });
+  return idx;
+}
+function nearest(idx, points, x, z, ok = () => true, maxD = 1.3) {
+  let best = -1, bd = maxD * maxD;
+  for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) {
+    const arr = idx.get((Math.floor(x) + dx) + "," + (Math.floor(z) + dz));
+    if (!arr) continue;
+    for (const i of arr) {
+      if (!ok(i)) continue;
+      const d = (points[i][0] - x) ** 2 + (points[i][1] - z) ** 2;
+      if (d < bd) { bd = d; best = i; }
+    }
+  }
+  return best;
+}
+const chalIdx = bucketIndex(CH, 0, 1);
+let picked = -1;
+const edgeName = { side: "side", top: "top", bottom: "bottom" };
+function chalHover(evt) {
+  const p = svgPoint(chalSvg, evt);
+  const i = nearest(chalIdx, CH, p.x, ZB1 - p.y, i => picked < 0 || CH[i][3] === picked);
+  if (i < 0) return hideTip();
+  const c = CH[i], m = c[6];
+  const where = m <= 0 ? `${Math.abs(m).toFixed(1)} in inside the edge` : `${m.toFixed(1)} in outside the edge`;
+  showTip(`<b>${DATA.names[c[3]]}</b><br>${c[2] ? "Won: ABS strike" : "Lost: ABS ball"}<br>${where} (${edgeName[c[7]]})<br>Count ${c[4]}, inning ${c[5]}`, evt.clientX, evt.clientY);
+}
+chalSvg.addEventListener("pointermove", chalHover);
+chalSvg.addEventListener("pointerdown", chalHover);
+chalSvg.addEventListener("pointerleave", hideTip);
+
+const counts = new Map();
+CH.forEach(c => { const v = counts.get(c[3]) || [0, 0]; v[0]++; v[1] += c[2]; counts.set(c[3], v); });
+const pick = $("catcherPick");
+[...counts.entries()].filter(([, v]) => v[0] >= 30)
+  .sort((a, b) => DATA.names[a[0]].localeCompare(DATA.names[b[0]]))
+  .forEach(([k, v]) => { const o = document.createElement("option"); o.value = k; o.textContent = `${DATA.names[k]} (${v[0]})`; pick.appendChild(o); });
+function applyPick() {
+  picked = +pick.value;
+  CH.forEach((c, i) => {
+    const on = picked < 0 || c[3] === picked;
+    chalEls[i].setAttribute("class", on ? (c[2] ? "dot-s" : "dot-b") : "dot-fade");
+    chalEls[i].setAttribute("opacity", on ? (picked < 0 ? 0.7 : 0.95) : 1);
+    chalEls[i].setAttribute("r", on && picked >= 0 ? 0.55 : 0.34);
+  });
+  if (picked >= 0) chalDots.append(...chalEls.filter((_, i) => CH[i][3] === picked));
+  const v = picked < 0 ? [T.catcher_challenges, T.catcher_won] : counts.get(picked);
+  $("pickReadout").textContent = `${fmt(v[1])} of ${fmt(v[0])} won · ${pct(v[1] / v[0])}`;
+}
+pick.addEventListener("change", applyPick);
+applyPick();
+
+const lost = CH.filter(c => !c[2]), won = CH.filter(c => c[2]);
+const lostNear = lost.filter(c => c[6] < 1).length / lost.length;
+const topCh = CH.filter(c => c[7] === "top"), restCh = CH.filter(c => c[7] !== "top");
+const winRate = a => a.filter(c => c[2]).length / a.length;
+const farLost = lost.filter(c => c[6] >= 2), farTop = farLost.filter(c => c[7] === "top").length / farLost.length;
+$("chalText").innerHTML = `
+  <p><strong>The blue dots hug the dashed line.</strong> ${pct(lostNear, 0)} of lost challenges were within an inch of the edge. When catchers are wrong, they are usually only a little wrong.</p>
+  <p><strong>The red dots spread deeper.</strong> Half of the wins were pitches more than ${Math.abs(won.map(c => c[6]).sort((a, b) => a - b)[Math.floor(won.length / 2)]).toFixed(1)} inches inside the edge.</p>
+  <p><strong>The top of the zone is the weak spot.</strong> Catchers win ${pct(winRate(topCh), 0)} of challenges there versus ${pct(winRate(restCh), 0)} elsewhere, and ${pct(farTop, 0)} of their badly wrong challenges (2+ inches outside) are above the zone. ABS draws the top lower than umpires traditionally called it, and catchers are still reaching for the old high strike.</p>
+  <p>Pick a catcher to see his challenges alone. J.T. Realmuto's 81% comes from being choosy: he challenged only about a quarter of the umpire's misses against his team.</p>`;
+
+/* ---------- heat maps ---------- */
+function heat(svgId, grid, label) {
+  const svg = $(svgId);
+  zoneFrame(svg);
+  const g = el("g", {}, svg);
+  const cell = DATA.cell, lookup = new Map();
+  for (const [i, j, n, p] of grid) {
+    const x = X0 + i * cell, z = ZB0 + j * cell;
+    el("rect", { x, y: yOf(z + cell), width: cell + 0.02, height: cell + 0.02, style: `fill: color-mix(in oklab, var(--strike) ${(p * 100).toFixed(1)}%, var(--surface))` }, g);
+    lookup.set(i + "," + j, [n, p]);
+  }
+  zoneOverlay(svg);
+  const hover = evt => {
+    const pt = svgPoint(svg, evt);
+    const i = Math.floor((pt.x - X0) / cell), j = Math.floor((ZB1 - pt.y - ZB0) / cell);
+    const v = lookup.get(i + "," + j);
+    if (!v) return hideTip();
+    const x = X0 + i * cell, z = ZB0 + j * cell;
+    showTip(`${x >= 0 ? "+" : "−"}${Math.abs(x)} to ${x + cell >= 0 ? "+" : "−"}${Math.abs(x + cell)} in, ${z}–${z + cell}" high<br><b>${pct(v[1])}</b> ${label}<br>${fmt(v[0])} pitches`, evt.clientX, evt.clientY);
+  };
+  svg.addEventListener("pointermove", hover);
+  svg.addEventListener("pointerdown", hover);
+  svg.addEventListener("pointerleave", hideTip);
+}
+heat("umpMap", DATA.ump_grid, "called strike");
+heat("catMap", DATA.catcher_grid, "of ball calls challenged");
+const S = DATA.sharpness;
+$("mapText").innerHTML = `The umpire goes from almost never calling a strike to almost always calling one across a band about four inches wide, centered right on the ABS edge. The catcher's map is paler because a challenge is a bigger commitment than a call: catchers wait until a pitch looks about an inch and a half inside the line. Their band is wider, and at the top it spills above the zone. Measured as blur, the umpire's read is off by about <strong>${S.umpire[0].toFixed(2)} in</strong> and the catcher's by about <strong>${S.catcher[0].toFixed(2)} in</strong>.`;
+
+/* ---------- missed strikes ---------- */
+const MS = DATA.misses;  // [x, z, challenged, missedBy]
+const missSvg = $("missMap");
+zoneFrame(missSvg);
+const mg = el("g", { class: "dots" }, missSvg);
+const order = MS.map((m, i) => i).sort((a, b) => MS[a][2] - MS[b][2]);
+for (const i of order) {
+  const m = MS[i];
+  el("circle", m[2] ? { cx: m[0], cy: yOf(m[1]), r: 0.3, class: "dot-s", opacity: 0.75 } : { cx: m[0], cy: yOf(m[1]), r: 0.26, class: "dot-let" }, mg);
+}
+zoneOverlay(missSvg);
+const missIdx = bucketIndex(MS, 0, 1);
+const missHover = evt => {
+  const p = svgPoint(missSvg, evt);
+  const i = nearest(missIdx, MS, p.x, ZB1 - p.y);
+  if (i < 0) return hideTip();
+  showTip(`Umpire called ball, ABS strike<br>${MS[i][3].toFixed(1)} in inside the edge<br>${MS[i][2] ? "Challenged" : "Let go"}`, evt.clientX, evt.clientY);
+};
+missSvg.addEventListener("pointermove", missHover);
+missSvg.addEventListener("pointerdown", missHover);
+missSvg.addEventListener("pointerleave", hideTip);
+const bands = [[0, 0.5, "0–½ inch"], [0.5, 1, "½–1 inch"], [1, 2, "1–2 inches"], [2, 99, "2+ inches"]];
+$("missTable").querySelector("tbody").innerHTML = bands.map(([lo, hi, lab]) => {
+  const s = MS.filter(m => m[3] >= lo && m[3] < hi), c = s.filter(m => m[2]).length;
+  return `<tr><td>${lab}</td><td>${fmt(s.length)}</td><td>${pct(c / s.length, 0)}</td></tr>`;
+}).join("") + `<tr><td><b>All</b></td><td>${fmt(T.misses_available)}</td><td>${pct(T.misses_challenged / T.misses_available, 0)}</td></tr>`;
+$("missText").innerHTML = `Even when the umpire missed by two inches or more, the defense let <strong>${pct(1 - T.big_misses_challenged / T.big_misses, 0)}</strong> of those pitches go, and a win would have cost nothing. Most of the rings sit within an inch of the dashed line. Since a correct challenge is free, letting one go means the catcher wasn't confident it was a strike either: the pitch fooled both of them.`;
+
+/* ---------- benchmark ---------- */
+// The blur at which each line reaches catchers' actual win rate.
+function crossing(pts, target) {
+  for (let i = 1; i < pts.length; i++) {
+    const [a, b] = [pts[i - 1], pts[i]];
+    if ((a[1] - target) * (b[1] - target) <= 0) return a[0] + (a[1] - target) / (a[1] - b[1]) * (b[0] - a[0]);
+  }
+  return NaN;
+}
+const CROSS = { independent: crossing(B.independent, B.catcher_actual), shared: crossing(B.shared, B.catcher_actual) };
+(function bench() {
+  const svg = $("bench"), W = 680, H = 360, m = { l: 56, r: 22, t: 18, b: 52 };
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const xs = s => m.l + (s - 0.4) / (3.0 - 0.4) * (W - m.l - m.r);
+  const ys = v => m.t + (1 - (v - 0.4) / 0.6) * (H - m.t - m.b);
+  for (let v = 0.4; v <= 1.0001; v += 0.1) {
+    el("line", { x1: m.l, x2: W - m.r, y1: ys(v), y2: ys(v), stroke: "var(--rule)", "stroke-width": 1 }, svg);
+    el("text", { x: m.l - 8, y: ys(v) + 4, "text-anchor": "end", "font-size": 12 }, svg).textContent = Math.round(v * 100) + "%";
+  }
+  for (let s = 0.5; s <= 3.0001; s += 0.5) {
+    el("text", { x: xs(s), y: H - m.b + 20, "text-anchor": "middle", "font-size": 12 }, svg).textContent = s.toFixed(1) + '"';
+  }
+  el("text", { x: (m.l + W - m.r) / 2, y: H - 10, "text-anchor": "middle", "font-size": 12.5 }, svg).textContent = "challenger's blur in inches  (← sharper eyes · blurrier eyes →)";
+  el("text", { x: 14, y: (m.t + H - m.b) / 2, "text-anchor": "middle", "font-size": 12.5, transform: `rotate(-90 14 ${(m.t + H - m.b) / 2})` }, svg).textContent = "head-to-head win rate";
+  // umpire's blur
+  const ux = xs(B.umpire_sigma);
+  el("line", { x1: ux, x2: ux, y1: m.t, y2: H - m.b, stroke: "var(--ink)", "stroke-width": 1, "stroke-dasharray": "3 3" }, svg);
+  el("text", { x: ux + 6, y: m.t + 12, "font-size": 12, style: "fill: var(--ink)" }, svg).textContent = `umpire's own blur, ${B.umpire_sigma.toFixed(2)}"`;
+  // catchers' actual
+  const cy = ys(B.catcher_actual);
+  el("line", { x1: m.l, x2: W - m.r, y1: cy, y2: cy, stroke: "var(--strike)", "stroke-width": 1.5, "stroke-dasharray": "6 4" }, svg);
+  el("text", { x: W - m.r, y: cy - 7, "text-anchor": "end", "font-size": 12, style: "fill: var(--strike)" }, svg).textContent = `catchers' actual ${pct(B.catcher_actual)}`;
+  const path = pts => pts.map((p, i) => `${i ? "L" : "M"}${xs(p[0]).toFixed(1)},${ys(p[1]).toFixed(1)}`).join("");
+  el("path", { d: path(B.independent), fill: "none", stroke: "var(--ink)", "stroke-width": 2.2 }, svg);
+  el("path", { d: path(B.shared), fill: "none", stroke: "var(--grass)", "stroke-width": 2.2 }, svg);
+  for (const [v, col] of [[B.equal_eyes_independent, "var(--ink)"], [B.equal_eyes_shared, "var(--grass)"]]) {
+    el("circle", { cx: ux, cy: ys(v), r: 5, fill: col, stroke: "var(--surface)", "stroke-width": 2 }, svg);
+    el("text", { x: ux - 9, y: ys(v) + 4, "text-anchor": "end", "font-size": 12.5, style: `fill: ${col}; font-weight: 500` }, svg).textContent = pct(v);
+  }
+  // where catchers' actual win rate crosses each line
+  for (const [s, col] of [[CROSS.independent, "var(--ink)"], [CROSS.shared, "var(--grass)"]]) {
+    el("circle", { cx: xs(s), cy: cy, r: 4.5, fill: "var(--surface)", stroke: col, "stroke-width": 2 }, svg);
+  }
+  // crosshair
+  const cross = el("line", { y1: m.t, y2: H - m.b, stroke: "var(--muted)", "stroke-width": 1, visibility: "hidden" }, svg);
+  const hit = el("rect", { x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: "transparent" }, svg);
+  const interp = (pts, s) => {
+    for (let i = 1; i < pts.length; i++) if (pts[i][0] >= s) {
+      const [a, b] = [pts[i - 1], pts[i]], t = (s - a[0]) / (b[0] - a[0]);
+      return a[1] + t * (b[1] - a[1]);
+    }
+    return pts[pts.length - 1][1];
+  };
+  const move = evt => {
+    const p = svgPoint(svg, evt);
+    const s = Math.min(3.0, Math.max(0.4, 0.4 + (p.x - m.l) / (W - m.l - m.r) * 2.6));
+    cross.setAttribute("x1", xs(s)); cross.setAttribute("x2", xs(s)); cross.setAttribute("visibility", "visible");
+    showTip(`Blur ${s.toFixed(2)}"<br>Independent reads: <b>${pct(interp(B.independent, s))}</b><br>Shared blind spots: <b>${pct(interp(B.shared, s))}</b>`, evt.clientX, evt.clientY);
+  };
+  hit.addEventListener("pointermove", move);
+  hit.addEventListener("pointerdown", move);
+  hit.addEventListener("pointerleave", () => { cross.setAttribute("visibility", "hidden"); hideTip(); });
+})();
+$("benchIntro").innerHTML = `Winning more than half of the disputes sounds like proof, but the catcher chooses which calls to dispute and the umpire can't. Anyone who only fights the calls they feel surest about will win most of those fights, even with the same eyes as the umpire. So the fair bar is not 50%. It is the win rate a challenger exactly as sharp as the umpire would get on these same pitches.`;
+$("benchCallout").innerHTML = `A challenger with the umpire's eyes would win about <strong>${pct(B.equal_eyes_independent, 0)}</strong>. Catchers win <strong>${pct(B.catcher_actual)}</strong>, which on the black line matches eyes ${CROSS.independent.toFixed(2)} inches blurry, against the umpire's ${B.umpire_sigma.toFixed(2)}. If many of the pitches that fool the umpire also fool the catcher (the green line), catchers land at ${CROSS.shared.toFixed(2)} inches: a tie. They pull clearly ahead only if their blind spots overlap the umpire's even more than that, and the data fit gets worse the more overlap you assume.`;
+
+/* ---------- blur rows ---------- */
+(function rows() {
+  const svg = $("rows"), rowsData = [["By pitch type", DATA.by_type], ["By part of the zone", DATA.by_edge]];
+  const W = 680, rowH = 30, m = { l: 130, r: 96 }, lo = 1.2, hi = 2.7;
+  let y = 8;
+  const total = rowsData.reduce((a, [, r]) => a + r.length, 0) * rowH + rowsData.length * 30 + 34;
+  svg.setAttribute("viewBox", `0 0 ${W} ${total}`);
+  const xs = v => m.l + (v - lo) / (hi - lo) * (W - m.l - m.r);
+  for (let v = 1.2; v <= 2.7001; v += 0.3) {
+    el("line", { x1: xs(v), x2: xs(v), y1: 4, y2: total - 26, stroke: "var(--rule)", "stroke-width": 1 }, svg);
+    el("text", { x: xs(v), y: total - 8, "text-anchor": "middle", "font-size": 12 }, svg).textContent = v.toFixed(1) + '"';
+  }
+  el("text", { x: W - m.r + 10, y: 14, "font-size": 11, class: "grp" }, svg).textContent = "UMP · CATCHER";
+  for (const [title, rs] of rowsData) {
+    y += 22;
+    el("text", { x: 0, y, "font-size": 11, class: "grp" }, svg).textContent = title.toUpperCase();
+    y += 8;
+    for (const r of rs) {
+      const cy = y + rowH / 2;
+      el("text", { x: 0, y: cy + 4.5, class: "lab" }, svg).textContent = r.group;
+      for (const [k, cls, dy] of [["umpire", "u", -4], ["catcher", "c", 4]]) {
+        const [v, a, b] = r[k];
+        el("line", { x1: xs(Math.max(lo, a)), x2: xs(Math.min(hi, b)), y1: cy + dy, y2: cy + dy, class: cls + "-ci", "stroke-width": 2.5, "stroke-linecap": "round", opacity: 0.45 }, svg);
+        el("circle", { cx: xs(v), cy: cy + dy, r: 5, class: cls + "-dot", stroke: "var(--surface)", "stroke-width": 1.5 }, svg);
+      }
+      el("text", { x: W - m.r + 10, y: cy + 4.5, "font-size": 12.5, style: "fill: var(--ink)" }, svg).textContent = `${r.umpire[0].toFixed(2)} · ${r.catcher[0].toFixed(2)}`;
+      y += rowH;
+    }
+  }
+})();
+</script>

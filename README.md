@@ -153,7 +153,13 @@ python -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python fetch_challenges.py   # every challenge from the MLB Stats API -> data/
 .venv/bin/python analyze.py            # tables -> results/*.csv, results/summary.json
 .venv/bin/python charts.py             # charts -> results/*.png
+.venv/bin/python zone_viz.py           # zone heat maps page -> site/who-knows-the-zone.html
 ```
+
+`site/who-knows-the-zone.html` is a self-contained page (open it in a browser)
+with zone heat maps of where umpires call strikes and where catchers challenge,
+every catcher challenge and every missed strike plotted on the zone, and the
+win-rate benchmark described above.
 
 `fetch_challenges.py` captures challenges recorded in two places in MLB's game
 feed: on the pitch itself, and on the play when the challenged pitch ended the

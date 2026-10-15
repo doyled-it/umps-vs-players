@@ -230,6 +230,7 @@ def shared_misread_sensitivity(pool: pd.DataFrame, ump_fit: dict, rhos=(0.0, 0.2
         r = optimize.minimize(nll, [-1.5, np.log(1.8), 1.0], args=(rho,), method="Nelder-Mead",
                               options={"maxiter": 800, "xatol": 1e-4, "fatol": 1e-4})
         out.append({"rho": rho, "catcher_sigma": float(np.exp(r.x[1])), "catcher_mu": float(r.x[0]),
+                    "catcher_ceil": float(0.5 + 0.5 * stats.norm.cdf(r.x[2])),
                     "neg_log_lik": float(r.fun)})
     return out
 
