@@ -1,0 +1,6 @@
+pandas>=2.2
+numpy>=2.0
+pyarrow>=17
+requests>=2.32
+scipy>=1.14
+matplotlib>=3.9
